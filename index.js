@@ -8,12 +8,16 @@ var animate = function() {
 }
 animate()
 
-
+var code = 'onmessage=function(a){for(var t=0;t<a.data.data.length;t++)a.data.data[t]=a.data.data[t]%255;for(var t=0;t<a.data.data.length;t++)a.data.data[t]=[a.data.data[Math.random()*a.data.data.length],a.data.data[Math.random()*a.data.data.length],a.data.data[Math.random()*a.data.data.length],a.data.data[Math.random()*a.data.data.length]].reduce(function(a,t){return(a+t)/2});postMessage({status:200,msg:"from thread",data:a.data.data})};'
+var blob = new Blob( [ code ], {
+    type: 'text/javascript'
+})
+var URI = window.URL.createObjectURL( blob )
 
 
 var buf = new ArrayBuffer( 0xff * 0xff )
 var ui8 = new Uint8Array( buf )
-var mapper = [1,2,3,4,5,6,7,8]
+var mapper = [1,2,3,4,5,6,7,8 ]
 
 
 function doWork( data ) {
@@ -44,8 +48,25 @@ function makeWorker() {
             data: ui8
         })
         worker.onmessage = function( event ) {
+            worker.terminate()
             resolve( event.data.data )
         }
+
+    })
+}
+
+function makeInlineWorker() {
+    return new Promise( function( resolve, reject ) {
+
+        var worker = new Worker( URI )
+        worker.postMessage({
+            data: ui8
+        })
+        worker.onmessage = function( event ) {
+            worker.terminate()
+            resolve( event.data.data )
+        }
+
     })
 }
 
@@ -54,6 +75,16 @@ function threaded() {
     Promise.all( mapper.map( makeWorker ) )
         .then( function( res ) {
             console.log( 'threaded' )
+            console.log( res )
+            console.log( 'duration:', ( performance.now() - workstart ).toFixed( 2 ), 'ms' )
+        })
+}
+
+function inlineThreaded() {
+    var workstart = performance.now()
+    Promise.all( mapper.map( makeInlineWorker ) )
+        .then( function( res ) {
+            console.log( 'inline threaded' )
             console.log( res )
             console.log( 'duration:', ( performance.now() - workstart ).toFixed( 2 ), 'ms' )
         })
@@ -79,6 +110,10 @@ function async() {
 document.querySelector( '.js-btnThreaded' ).addEventListener( 'click', function() {
     console.log( 'starting threaded test' )
     threaded()
+})
+document.querySelector( '.js-btnInlineThreaded' ).addEventListener( 'click', function() {
+    console.log( 'starting inline threaded test' )
+    inlineThreaded()
 })
 document.querySelector( '.js-btnAsync' ).addEventListener( 'click', function() {
     console.log( 'starting async test' )
